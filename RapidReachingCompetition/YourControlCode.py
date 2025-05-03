@@ -7,13 +7,13 @@ class YourCtrl:
     self.m = m
     self.d = d
     self.target_points = target_points
-    self.path = self.pathBuilder([15, 7, 30]) #[10, 5, 20]
+    self.path = self.pathBuilder([10, 5, 20]) #[10, 5, 20]
     self.curr_point = 0
     self.init_qpos = d.qpos.copy()
 
     # Control gains (using similar values to CircularMotion)
     self.kp = 150.0
-    self.kd = 10.0
+    self.kd = 12.0
   
   def pathFinder(self):
     start = self.d.body(mujoco.mj_name2id(self.m, 1, "EE_Frame")).xpos
@@ -94,25 +94,21 @@ class YourCtrl:
   def CtrlUpdate(self):
     jtorque_cmd = np.zeros(6) #These three lines seem to keep things constant (values like velocity)
 
-
     target_position = self.path[self.curr_point]
-
+    
     ee_id = mujoco.mj_name2id(self.m, 1, "EE_Frame")
 
     jacp = np.zeros((3, 6))
-    jacr = np.zeros((3, 6))
-
+    
     initial_jpos = np.copy(self.d.qpos[:6])
     target_jpos = np.copy(initial_jpos)
     for i in range(3):
-      mujoco.mj_jac(self.m, self.d, jacp, jacr, target_position, ee_id)
+      mujoco.mj_jacBodyCom(self.m, self.d, jacp, None, ee_id)
       EE_pos = self.d.body(ee_id).xpos
       pos_err = (target_position - EE_pos)
-      ori_err = np.zeros(3)
-      pose_err = np.concatenate((pos_err, ori_err))
-      J_pose = np.concatenate((jacp, jacr))
       dist = np.linalg.norm(pos_err)
-      target_jpos += (dist + 0.7) * np.linalg.pinv(J_pose) @ pose_err
+      
+      target_jpos += (5*dist/4 + 0.85) * np.linalg.pinv(jacp) @ pos_err
       self.d.qpos[:6] = target_jpos
       mujoco.mj_kinematics(self.m, self.d)
     
@@ -132,6 +128,7 @@ class YourCtrl:
       return jtorque_cmd
 
     return jtorque_cmd
+    
 
 class PriorityQueue:
   def __init__(self):
@@ -195,4 +192,3 @@ class PriorityQueue:
   
   def swap(self, i, j):
     self.queue[i], self.queue[j] = self.queue[j], self.queue[i]
-
