@@ -8,6 +8,7 @@ class YourCtrl:
     self.d = d
     self.target_points = target_points
     self.path = self.pathBuilder([10, 5, 20]) #[10, 5, 20]
+
     self.curr_point = 0
     self.init_qpos = d.qpos.copy()
 
@@ -44,6 +45,7 @@ class YourCtrl:
         for j in range(len(path[0])):
           if (i == path[0][j]):
             check = True
+            break
           new_p.append(path[0][j])
         if (check):
           continue
@@ -109,6 +111,7 @@ class YourCtrl:
       dist = np.linalg.norm(pos_err)
       
       target_jpos += (5*dist/4 + 0.85) * np.linalg.pinv(jacp) @ pos_err
+
       self.d.qpos[:6] = target_jpos
       mujoco.mj_kinematics(self.m, self.d)
     
@@ -128,7 +131,6 @@ class YourCtrl:
       return jtorque_cmd
 
     return jtorque_cmd
-    
 
 class PriorityQueue:
   def __init__(self):
